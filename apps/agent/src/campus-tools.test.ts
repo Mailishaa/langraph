@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { activities, studySpots } from "./campus-data.js";
 import {
   findActivities,
+  findCampusEvents,
   findFoodOptions,
   findStudySpots,
   withinBudgetAndArea,
@@ -55,4 +56,26 @@ describe("Campus Sidekick tool exercises", () => {
     const results = JSON.parse(value) as { id: string }[];
     expect(results.map((item) => item.id)).toEqual(["food-3"]);
   });
+  it("finds events by date, interest, and maximum entry price", async () => {
+  const value = await findCampusEvents.invoke({
+    date: "Saturday",
+    interest: "music",
+    maxEntryPriceKsh: 250,
+  });
+
+  const results = JSON.parse(value) as { id: string }[];
+
+  expect(results.map((item) => item.id)).toEqual(["event-2"]);
+});
+it("does not return events above the maximum entry price", async () => {
+  const value = await findCampusEvents.invoke({
+    date: "Saturday",
+    interest: "music",
+    maxEntryPriceKsh: 100,
+  });
+
+  const results = JSON.parse(value) as { id: string }[];
+
+  expect(results).toEqual([]);
+});
 });

@@ -4,6 +4,7 @@ import {
   activities,
   foodOptions,
   studySpots,
+  campusEvents,
   type CampusOption,
   type NoiseLevel,
   type TimeOfDay,
@@ -18,19 +19,24 @@ export function withinBudgetAndArea<T extends CampusOption>(
   maxCostKsh: number,
   area?: string,
 ): T[] {
-  void maxCostKsh;
-  void area;
-  return options;
-}
+  const requestedArea = area?.trim().toLowerCase();
 
+  return options.filter((option) => {
+    const isAffordable = option.costKsh <= maxCostKsh;
+    const isInArea =
+      !requestedArea || option.area.toLowerCase() === requestedArea;
+
+    return isAffordable && isInArea;
+  });
+}
 export const findStudySpots = tool(
-  ({ area, noiseLevel, maxCostKsh }) => {
-    // TODO 2: Use withinBudgetAndArea, then keep only the requested noise level.
-    void area;
-    void noiseLevel;
-    void maxCostKsh;
-    return JSON.stringify(studySpots);
-  },
+({ area, noiseLevel, maxCostKsh }) => {
+  const matches = withinBudgetAndArea(studySpots, maxCostKsh, area).filter(
+    (spot) => spot.noiseLevel === noiseLevel,
+  );
+
+  return JSON.stringify(matches);
+},
   {
     name: "find_study_spots",
     description:
@@ -45,13 +51,20 @@ export const findStudySpots = tool(
 
 export const findActivities = tool(
   ({ area, interests, maxCostKsh, timeOfDay }) => {
-    // TODO 3: Filter by budget/area, time of day, and at least one matching interest.
-    void area;
-    void interests;
-    void maxCostKsh;
-    void timeOfDay;
-    return JSON.stringify(activities);
-  },
+  const requestedInterests = interests.map((interest) =>
+    interest.trim().toLowerCase(),
+  );
+
+  const matches = withinBudgetAndArea(activities, maxCostKsh, area).filter(
+    (activity) =>
+      activity.timeOfDay.includes(timeOfDay) &&
+      activity.interests.some((interest) =>
+        requestedInterests.includes(interest.toLowerCase()),
+      ),
+  );
+
+  return JSON.stringify(matches);
+},
   {
     name: "find_activities",
     description:
@@ -67,12 +80,18 @@ export const findActivities = tool(
 
 export const findFoodOptions = tool(
   ({ area, maxCostKsh, dietaryPreference }) => {
-    // TODO 4: Filter by budget/area and dietary preference when one is supplied.
-    void area;
-    void maxCostKsh;
-    void dietaryPreference;
-    return JSON.stringify(foodOptions);
-  },
+  const requestedPreference = dietaryPreference?.trim().toLowerCase();
+
+  const matches = withinBudgetAndArea(foodOptions, maxCostKsh, area).filter(
+    (food) =>
+      !requestedPreference ||
+      food.dietaryOptions.some(
+        (option) => option.toLowerCase() === requestedPreference,
+      ),
+  );
+
+  return JSON.stringify(matches);
+},
   {
     name: "find_food_options",
     description: "Find student-friendly food options with known local prices.",
@@ -80,6 +99,38 @@ export const findFoodOptions = tool(
       area: z.string().optional().describe("Preferred Nairobi area"),
       maxCostKsh: z.number().nonnegative().describe("Maximum amount available for food"),
       dietaryPreference: z.string().optional().describe("For example vegetarian or vegan"),
+    }),
+  },
+);
+export const findCampusEvents = tool(
+  ({ date, interest, maxEntryPriceKsh }) => {
+    const requestedInterest = interest.trim().toLowerCase();
+
+    const matches = campusEvents.filter(
+      (event) =>
+        event.date.toLowerCase() === date.trim().toLowerCase() &&
+        event.costKsh <= maxEntryPriceKsh &&
+        event.interests.some(
+          (eventInterest) =>
+            eventInterest.toLowerCase() === requestedInterest,
+        ),
+    );
+
+    return JSON.stringify(matches);
+  },
+  {
+    name: "find_campus_events",
+    description:
+      "Find trusted campus events by date, interest, and maximum entry price. Use this instead of inventing events or prices.",
+    schema: z.object({
+      date: z.string().describe("Day when the student wants an event"),
+      interest: z
+        .string()
+        .describe("Interest such as technology, art, music, or nature"),
+      maxEntryPriceKsh: z
+        .number()
+        .nonnegative()
+        .describe("Maximum amount the student can pay to enter"),
     }),
   },
 );

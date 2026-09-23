@@ -1,6 +1,8 @@
 import { SystemMessage } from "@langchain/core/messages";
 import { ChatGoogle } from "@langchain/google/node";
-import { END, MessagesAnnotation, START, StateGraph } from "@langchain/langgraph";
+import { MessagesAnnotation, START, StateGraph } from "@langchain/langgraph";
+import { ToolNode, toolsCondition } from "@langchain/langgraph/prebuilt";
+import { campusTools } from "./campus-tools.js";
 
 const apiKey = process.env.GOOGLE_API_KEY;
 
@@ -16,15 +18,29 @@ const model = new ChatGoogle({
 });
 
 const systemPrompt = `You are Campus Sidekick, a friendly planning agent for students in Nairobi.
-Help students combine study, food, and fun without exceeding their stated money or time limits.
-Never invent a venue or price. When local information is needed, use the supplied tools.
+Help students combine study, food, and fun while respecting their stated money and time limits.
+
+Treat the user's budget as a hard maximum.
+Never recommend a plan that exceeds the user's stated budget unless the user explicitly asks for options above budget.
+
+Never invent a venue, venue name, price, or other local fact.
+Every venue and price in your answer must come from the supplied tools.
+
+If no combination of the requested activities fits within the budget, clearly say that no valid combination was found.
+Do not silently relax or change the user's requirements.
+
 Show costs in KSh and finish with a clear total.`;
 
 async function callModel(state: typeof MessagesAnnotation.State) {
-  // TODO 5: Bind campusTools to the model and invoke that tool-aware model here.
-  const response = await model.invoke([new SystemMessage(systemPrompt), ...state.messages]);
+  const modelWithTools = model.bindTools(campusTools);
+  const response = await modelWithTools.invoke([
+    new SystemMessage(systemPrompt),
+    ...state.messages,
+  ]);
+
   return { messages: [response] };
 }
+const toolNode = new ToolNode(campusTools);
 
 /**
  * This first version is only START -> agent -> END. It can talk, but it cannot complete a tool
@@ -32,7 +48,8 @@ async function callModel(state: typeof MessagesAnnotation.State) {
  */
 export const graph = new StateGraph(MessagesAnnotation)
   .addNode("agent", callModel)
+  .addNode("tools", toolNode)
   .addEdge(START, "agent")
-  // TODO 6: Replace this fixed edge with conditional tool routing.
-  .addEdge("agent", END)
+  .addConditionalEdges("agent", toolsCondition)
+  .addEdge("tools", "agent")
   .compile();

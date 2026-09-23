@@ -115,3 +115,39 @@ export const foodOptions: FoodOption[] = [
     dietaryOptions: ["vegetarian", "vegan"],
   },
 ];
+
+export interface CampusEvent {
+  id: string;
+  name: string;
+  date: string;
+  costKsh: number;
+  interests: string[];
+  description: string;
+}
+
+export const campusEvents: CampusEvent[] = [
+  {
+    id: "event-1",
+    name: "Student Tech Meetup",
+    date: "Saturday",
+    costKsh: 100,
+    interests: ["technology", "friends"],
+    description: "A casual meetup for students interested in technology.",
+  },
+  {
+    id: "event-2",
+    name: "Creative Arts Showcase",
+    date: "Saturday",
+    costKsh: 200,
+    interests: ["art", "music", "friends"],
+    description: "Student performances and creative work.",
+  },
+  {
+    id: "event-3",
+    name: "Nature Club Talk",
+    date: "Sunday",
+    costKsh: 50,
+    interests: ["nature", "environment"],
+    description: "A student discussion about local conservation.",
+  },
+];
